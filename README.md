@@ -1,38 +1,50 @@
-# LLM Maps Integration
+# LLM Maps Integration with Open WebUI
 
-A local LLM-powered application that integrates with Google Maps to provide intelligent location-based responses. Users can chat with an AI assistant to find places, restaurants, attractions, and get directions through an interactive web interface.
+Aplikasi AI lokal yang mengintegrasikan Ollama LLM dengan Google Maps melalui Open WebUI sebagai frontend dan Node.js sebagai backend API. Pengguna dapat berinteraksi dengan AI assistant untuk mencari tempat, restoran, atraksi wisata, dan mendapatkan informasi lokasi melalui antarmuka chat yang intuitif.
 
 ## 🚀 Features
 
-- **Local LLM Integration**: Uses Ollama or OpenAI-compatible APIs for natural language processing
-- **Google Maps Integration**: Real-time place search, detailed information, and interactive maps
-- **Chat Interface**: Natural conversation with the AI about locations and places
-- **Interactive Map**: Visual representation of search results with markers and place details
-- **Security**: Rate limiting, input sanitization, and API key protection
-- **Responsive Design**: Works on desktop and mobile devices
+- **Local LLM dengan Ollama**: Menggunakan model AI lokal (Llama2, Mistral, dll) tanpa mengirim data ke cloud
+- **Open WebUI Frontend**: Interface chat yang modern dan responsif untuk berinteraksi dengan AI
+- **Google Maps Integration**: Pencarian tempat real-time, informasi detail, dan peta interaktif
+- **Node.js Backend API**: Server TypeScript yang menangani integrasi Google Maps dan LLM
+- **Filter Function**: Custom filter untuk Open WebUI yang memproses query lokasi
+- **Security**: Rate limiting, input sanitization, dan proteksi API key
+- **Fully Local**: Semua pemrosesan AI dilakukan secara lokal untuk privasi maksimal
 
 ## 🏗️ Architecture
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Web Frontend  │    │   Backend API   │    │   External APIs │
-│                 │    │                 │    │                 │
-│ • Chat UI       │◄──►│ • Express.js    │◄──►│ • Google Maps   │
-│ • Google Maps   │    │ • TypeScript    │    │ • Ollama/OpenAI │
-│ • Responsive    │    │ • Security      │    │ • Places API    │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Open WebUI    │    │  Filter Function│    │   Node.js API   │    │   External APIs │
+│                 │    │                 │    │                 │    │                 │
+│ • Chat Interface│◄──►│ • Query Parser  │◄──►│ • Express.js    │◄──►│ • Google Maps   │
+│ • Model Manager │    │ • Maps Context  │    │ • TypeScript    │    │ • Places API    │
+│ • User Auth     │    │ • LLM Enhancer  │    │ • Security      │    │ • Geocoding     │
+│ • Responsive UI │    │ • Response Format│    │ • Rate Limiting │    │                 │
+└─────────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────┘
+                                    ▲
+                                    │
+                       ┌─────────────────┐
+                       │   Ollama LLM    │
+                       │                 │
+                       │ • Local Models  │
+                       │ • Llama2/Mistral│
+                       │ • No Cloud Deps │
+                       └─────────────────┘
 ```
 
 ## 📋 Prerequisites
 
-- Node.js 18+ and npm
-- Google Cloud Account with Maps API enabled
-- Ollama installed locally OR OpenAI API key
-- MongoDB (optional, for future data persistence)
+- **Node.js 18+** dan npm untuk backend API
+- **Python 3.8+** untuk Open WebUI
+- **Ollama** terinstall secara lokal dengan model LLM
+- **Google Cloud Account** dengan Maps API yang sudah diaktifkan
+- **Open WebUI** untuk frontend interface
 
 ## 🛠️ Installation
 
-### 1. Clone and Setup
+### 1. Clone dan Setup Backend
 
 ```bash
 git clone <repository-url>
@@ -40,15 +52,50 @@ cd llm-maps-integration
 npm install
 ```
 
-### 2. Environment Configuration
+### 2. Install dan Setup Ollama
 
-Copy the example environment file and configure your settings:
+```bash
+# Install Ollama (macOS/Linux)
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# Atau download dari https://ollama.ai untuk Windows
+
+# Pull model yang diinginkan
+ollama pull llama2          # Model 7B, balance yang baik
+ollama pull llama2:13b      # Model 13B, kualitas lebih baik
+ollama pull mistral         # Model yang cepat dan efisien
+ollama pull codellama       # Model khusus untuk coding
+
+# Start Ollama service
+ollama serve
+```
+
+### 3. Install dan Setup Open WebUI
+
+```bash
+# Install Open WebUI menggunakan pip
+pip install open-webui
+
+# Atau menggunakan Docker
+docker run -d -p 3000:8080 --add-host=host.docker.internal:host-gateway \
+  -v open-webui:/app/backend/data --name open-webui --restart always \
+  ghcr.io/open-webui/open-webui:main
+
+# Atau install dari source
+git clone https://github.com/open-webui/open-webui.git
+cd open-webui
+pip install -r requirements.txt
+```
+
+### 4. Konfigurasi Environment
+
+Copy file environment example dan konfigurasi settings:
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` with your configuration:
+Edit `.env` dengan konfigurasi Anda:
 
 ```env
 # Server Configuration
@@ -57,20 +104,15 @@ NODE_ENV=development
 
 # Google Maps API
 GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
-GOOGLE_MAPS_REGION=US
+GOOGLE_MAPS_REGION=ID
 
-# LLM Configuration (choose one)
+# LLM Configuration (Ollama)
 LLM_PROVIDER=ollama
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama2
 
-# OR for OpenAI
-# LLM_PROVIDER=openai
-# OPENAI_API_KEY=your_openai_api_key_here
-# OPENAI_MODEL=gpt-3.5-turbo
-
 # Security
-CORS_ORIGIN=http://localhost:3000
+CORS_ORIGIN=http://localhost:8080
 API_SECRET=your_random_secret_key_here
 
 # Rate Limiting
@@ -79,6 +121,21 @@ RATE_LIMIT_MAX_REQUESTS=100
 
 # Logging
 LOG_LEVEL=info
+```
+
+### 5. Setup Open WebUI Environment
+
+Buat file `.env.webui` untuk konfigurasi Open WebUI:
+
+```env
+# Open WebUI Configuration
+WEBUI_SECRET_KEY=llm-maps-integration-secret-key-2024
+FUNCTIONS_DIR=./open-webui-functions
+MAPS_API_BASE_URL=http://localhost:3000
+GLOBAL_LOG_LEVEL=DEBUG
+
+# Ollama Configuration
+OLLAMA_BASE_URL=http://localhost:11434
 ```
 
 ### 3. Google Cloud Setup
@@ -126,26 +183,57 @@ ollama serve
 2. Add to `.env` file
 3. Set `LLM_PROVIDER=openai`
 
-## 🚀 Running the Application
+## 🚀 Menjalankan Aplikasi
 
-### Development Mode
+### Mode Development
 
+1. **Start Backend API Server**:
 ```bash
-# Start the backend server
+# Start Node.js backend server
 npm run dev
 
-# The server will start on http://localhost:3000
-# API documentation available at http://localhost:3000/docs
+# Server akan berjalan di http://localhost:3000
+# API documentation tersedia di http://localhost:3000/docs
 ```
 
-### Production Mode
+2. **Start Ollama Service**:
+```bash
+# Pastikan Ollama service berjalan
+ollama serve
+
+# Verify model tersedia
+ollama list
+```
+
+3. **Start Open WebUI**:
+```bash
+# Set environment variables
+export FUNCTIONS_DIR=./open-webui-functions
+export WEBUI_SECRET_KEY=llm-maps-integration-secret-key-2024
+export MAPS_API_BASE_URL=http://localhost:3000
+
+# Start Open WebUI
+open-webui serve --port 8080
+
+# Open WebUI akan berjalan di http://localhost:8080
+```
+
+4. **Setup Google Maps Filter**:
+   - Copy file `google_maps_filter.py` ke folder `open-webui-functions/`
+   - Restart Open WebUI untuk load filter
+   - Pilih model "GoogleMapsAI" di interface
+
+### Mode Production
 
 ```bash
-# Build the application
+# Build backend application
 npm run build
 
-# Start production server
+# Start production backend server
 npm start
+
+# Start Open WebUI dengan production config
+WEBUI_SECRET_KEY=your-production-secret open-webui serve --host 0.0.0.0 --port 8080
 ```
 
 ## 📖 API Documentation
@@ -207,6 +295,56 @@ npm run test:coverage
 - **Helmet Security**: Adds security headers
 - **API Key Validation**: Protects sensitive endpoints
 - **Request Logging**: Monitors API usage
+
+## 📖 Penggunaan
+
+### Menggunakan Open WebUI Interface
+
+1. **Buka Open WebUI** di browser: `http://localhost:8080`
+2. **Pilih Model "GoogleMapsAI"** dari dropdown model
+3. **Mulai chat** dengan pertanyaan lokasi, contoh:
+   - "Cari restoran terbaik di Jakarta Selatan"
+   - "Bagaimana cara ke Monas dari Bandara Soekarno-Hatta?"
+   - "Rekomendasi tempat wisata di Bali"
+   - "Hotel murah di dekat Malioboro Yogyakarta"
+
+### API Endpoints Backend
+
+- `GET /api/maps/search` - Cari tempat/lokasi
+- `GET /api/maps/directions` - Dapatkan rute perjalanan
+- `GET /api/maps/geocode` - Konversi alamat ke koordinat
+- `GET /api/maps/reverse-geocode` - Konversi koordinat ke alamat
+
+### Contoh Request API
+
+```bash
+# Cari restoran
+curl "http://localhost:3000/api/maps/search?query=restoran&location=-6.2088,106.8456"
+
+# Dapatkan rute
+curl "http://localhost:3000/api/maps/directions?origin=Jakarta&destination=Bandung"
+
+# Geocode alamat
+curl "http://localhost:3000/api/maps/geocode?address=Jl. Sudirman No. 1, Jakarta"
+```
+
+### Contoh Percakapan dengan LLM
+
+**User**: "Saya ingin makan sushi di Jakarta, ada rekomendasi?"
+
+**GoogleMapsAI**: "Berikut beberapa rekomendasi restoran sushi terbaik di Jakarta:
+
+1. **Sushi Tei** - Plaza Indonesia
+   - Rating: 4.2/5
+   - Alamat: Jl. M.H. Thamrin No.28-30
+   - Harga: Rp 150.000-300.000/orang
+
+2. **Genki Sushi** - Grand Indonesia
+   - Rating: 4.1/5  
+   - Alamat: Jl. M.H. Thamrin No.1
+   - Harga: Rp 100.000-250.000/orang
+
+Apakah Anda ingin saya carikan rute ke salah satu restoran ini?"
 
 ## 🎯 Usage Examples
 
@@ -272,38 +410,48 @@ npm run test:coverage
 
 ## 🚨 Troubleshooting
 
-### Common Issues
+### Masalah Umum
 
-1. **Google Maps API Key Issues**:
-   ```bash
-   # Check if APIs are enabled
-   gcloud services list --enabled
-   
-   # Verify API key restrictions
-   # Make sure your domain is whitelisted
-   ```
+1. **Masalah API Key Google Maps**
+   - Pastikan Google Maps API key valid
+   - Cek bahwa required APIs sudah diaktifkan di Google Cloud Console
+   - Verify billing sudah disetup untuk Google Cloud project
 
-2. **Ollama Connection Issues**:
-   ```bash
-   # Check if Ollama is running
-   curl http://localhost:11434/api/tags
-   
-   # Restart Ollama service
-   ollama serve
-   ```
+2. **Masalah Koneksi LLM/Ollama**
+   - Pastikan Ollama service berjalan: `ollama serve`
+   - Cek model sudah didownload: `ollama pull llama2`
+   - Verify base URL benar: `http://localhost:11434`
 
-3. **Rate Limiting**:
-   ```bash
-   # Adjust rate limits in .env
-   RATE_LIMIT_MAX_REQUESTS=200
-   RATE_LIMIT_WINDOW_MS=900000
-   ```
+3. **Masalah Open WebUI**
+   - Pastikan port 8080 tidak digunakan aplikasi lain
+   - Cek environment variables sudah diset dengan benar
+   - Restart Open WebUI jika ada perubahan pada functions
 
-4. **CORS Issues**:
-   ```bash
-   # Update CORS origin in .env
-   CORS_ORIGIN=http://localhost:3000,https://yourdomain.com
-   ```
+4. **Masalah CORS**
+   - Update `CORS_ORIGIN` di file `.env`
+   - Pastikan frontend URL sesuai dengan CORS configuration
+
+5. **Google Maps Filter Tidak Muncul**
+   - Copy `google_maps_filter.py` ke folder `open-webui-functions/`
+   - Restart Open WebUI
+   - Cek logs untuk error messages
+
+### Debug Commands
+
+```bash
+# Cek status Ollama
+ollama list
+curl http://localhost:11434/api/tags
+
+# Cek backend API
+curl http://localhost:3000/health
+
+# Cek Open WebUI functions
+ls -la open-webui-functions/
+
+# Test Google Maps API
+curl "http://localhost:3000/api/maps/search?query=test&location=0,0"
+```
 
 ### Debug Mode
 
